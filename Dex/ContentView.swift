@@ -10,13 +10,14 @@ import CoreData
 
 struct ContentView: View {
     @Environment(\.managedObjectContext) private var viewContext
-
+    
     @FetchRequest<Pokemon>(
         sortDescriptors: [SortDescriptor(\.id)],
         animation: .default
     ) private var pokedex
     
     @State private var searchText = ""
+    @State private var filteredByFavorites = false
     
     let fetcher = FetchService()
     
@@ -27,9 +28,13 @@ struct ContentView: View {
             predicates.append(NSPredicate(format: "name contains[c] %@", searchText))
         }
         
+        if filteredByFavorites {
+            predicates.append(NSPredicate(format: "favorite == %d", true))
+        }
+        
         return NSCompoundPredicate(andPredicateWithSubpredicates: predicates)
     }
-
+    
     var body: some View {
         NavigationStack {
             List {
@@ -45,8 +50,15 @@ struct ContentView: View {
                         .frame(width: 100, height: 100)
                         
                         VStack(alignment: .leading) {
-                            Text(pokemon.name!.capitalized)
-                                .fontWeight(.bold)
+                            HStack {
+                                Text(pokemon.name!.capitalized)
+                                    .fontWeight(.bold)
+                                
+                                if pokemon.favorite {
+                                    Image(systemName: "star.fill")
+                                        .foregroundStyle(.yellow)
+                                }
+                            }
                             
                             HStack {
                                 ForEach(pokemon.types!, id: \.self) { type in
@@ -58,7 +70,7 @@ struct ContentView: View {
                                         .padding(.vertical, 5)
                                         .background(Color(type.capitalized))
                                         .clipShape(.capsule)
-                                        
+                                    
                                 }
                             }
                         }
@@ -71,12 +83,20 @@ struct ContentView: View {
             .onChange(of: searchText) {
                 pokedex.nsPredicate = dynamicPredicate
             }
+            .onChange(of: filteredByFavorites) {
+                pokedex.nsPredicate = dynamicPredicate
+            }
             .navigationDestination(for: Pokemon.self) { pokemon in
                 Text(pokemon.name ?? "no name")
             }
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    EditButton()
+                    Button {
+                        filteredByFavorites.toggle()
+                    } label: {
+                        Label("Filtered By Favorites", systemImage: filteredByFavorites ? "star.fill" : "star")
+                    }
+                    .tint(.yellow)
                 }
                 ToolbarItem {
                     Button("Add Item", systemImage: "plus") {
