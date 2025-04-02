@@ -56,14 +56,21 @@ struct ContentView: View {
                     Section {
                         ForEach(pokedex) { pokemon in
                             NavigationLink(value: pokemon) {
-                                AsyncImage(url: pokemon.spriteURL) { image in
-                                    image
+                                if pokemon.sprite == nil {
+                                    AsyncImage(url: pokemon.spriteURL) { image in
+                                        image
+                                            .resizable()
+                                            .scaledToFit()
+                                    } placeholder: {
+                                        ProgressView()
+                                    }
+                                    .frame(width: 100, height: 100)
+                                } else {
+                                    pokemon.spriteImage
                                         .resizable()
                                         .scaledToFit()
-                                } placeholder: {
-                                    ProgressView()
+                                        .frame(width: 100, height: 100)
                                 }
-                                .frame(width: 100, height: 100)
                                 
                                 VStack(alignment: .leading) {
                                     HStack {
@@ -185,8 +192,6 @@ struct ContentView: View {
                     pokemon.shiny = try await URLSession.shared.data(from: pokemon.shinyURL!).0
                     
                     try viewContext.save()
-                    
-                    print("Sprites stored: \(pokemon.id): \(pokemon.name!.capitalized)")
                 }
             } catch {
                 print(error)
