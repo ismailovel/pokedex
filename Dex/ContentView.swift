@@ -18,18 +18,18 @@ struct ContentView: View {
     
     let fetcher = FetchService()
     
-    private var dynamicPredicate: NSPredicate {
-        var predicates: [NSPredicate] = []
-        
-        if !searchText.isEmpty {
-            predicates.append(NSPredicate(format: "name contains[c] %@", searchText))
+    private var dynamicPredicate: Predicate<Pokemon> {
+        #Predicate<Pokemon> { pokemon in
+            if filteredByFavorites && !searchText.isEmpty {
+                pokemon.favorite && pokemon.name.localizedStandardContains(searchText)
+            } else if !searchText.isEmpty {
+                pokemon.name.localizedStandardContains(searchText)
+            } else if filteredByFavorites {
+                pokemon.favorite
+            } else {
+                true
+            }
         }
-        
-        if filteredByFavorites {
-            predicates.append(NSPredicate(format: "favorite == %d", true))
-        }
-        
-        return NSCompoundPredicate(andPredicateWithSubpredicates: predicates)
     }
     
     var body: some View {
@@ -49,7 +49,7 @@ struct ContentView: View {
             NavigationStack {
                 List {
                     Section {
-                        ForEach(pokedex) { pokemon in
+                        ForEach((try? pokedex.filter(dynamicPredicate)) ?? pokedex) { pokemon in
                             NavigationLink(value: pokemon) {
                                 if pokemon.sprite == nil {
                                     AsyncImage(url: pokemon.spriteURL) { image in
@@ -125,13 +125,16 @@ struct ContentView: View {
                 .navigationTitle("Pokedex")
                 .searchable(text: $searchText, prompt: "Find a Pokemon")
                 .autocorrectionDisabled()
+                .animation(.default, value: searchText)
                 .navigationDestination(for: Pokemon.self) { pokemon in
                     PokemonDetail(pokemon: pokemon)
                 }
                 .toolbar {
                     ToolbarItem(placement: .navigationBarTrailing) {
                         Button {
-                            filteredByFavorites.toggle()
+                            withAnimation {
+                                filteredByFavorites.toggle()
+                            }
                         } label: {
                             Label("Filtered By Favorites", systemImage: filteredByFavorites ? "star.fill" : "star")
                         }
